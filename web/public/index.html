@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de análisis de superficie de ataque</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Plataforma de análisis de superficie de ataque</h1>
+        <form id="analysis-form" class="mt-4">
+            <div class="form-group">
+                <label for="target">IP o Dominio</label>
+                <input type="text" class="form-control" id="target" placeholder="Ingrese la IP o dominio" required>
+            </div>
+            <div class="form-group">
+                <label for="analysis-type">Tipo de análisis</label>
+                <select class="form-control" id="analysis-type" required>
+                    <option value="attack_surface_scan">Escaneo de superficie de ataque</option>
+                    <option value="cve_lookup">Detección de vulnerabilidades (CVEs)</option>
+                    <option value="subdomain_enum">Enumeración de subdominios</option>
+                    <option value="whois_lookup">Consulta de WHOIS</option>
+                    <option value="technology_fingerprint">Detección de tecnologías</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Iniciar análisis</button>
+        </form>
+        <div id="results" class="mt-5">
+            <h2>Resultados del análisis</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Servicio</th>
+                        <th>Descripción</th>
+                        <th>Detalles</th>
+                    </tr>
+                </thead>
+                <tbody id="results-output">
+                    <!-- Dynamic results will be inserted here -->
+                </tbody>
+            </table>
+            <button id="download-report" class="btn btn-secondary mt-3">Descargar Informe</button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="scripts.js"></script>
+</body>
+</html>

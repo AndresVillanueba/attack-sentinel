@@ -1,0 +1,14 @@
+{
+  "name": "proyecto_attack",
+  "version": "1.0.0",
+  "description": "Servidor para la Plataforma de Análisis de Superficie de Ataque",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "express": "^4.17.1"
+  }
+}

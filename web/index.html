@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plataforma de Análisis de Superficie de Ataque</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1 class="mt-5">Plataforma de Análisis de Superficie de Ataque</h1>
+
+    <form id="analysis-form" class="mt-4">
+      <div class="form-group">
+        <label for="target">IP o Dominio</label>
+        <input type="text" class="form-control" id="target" placeholder="Ingrese la IP o dominio" required>
+      </div>
+      <div class="form-group">
+        <label for="analysis-type">Tipo de Análisis</label>
+        <select class="form-control" id="analysis-type" required>
+          <option value="attack_surface_scan">Escaneo de Superficie de Ataque</option>
+          <option value="cve_lookup">Detección de Vulnerabilidades (CVEs)</option>
+          <option value="subdomain_enum">Enumeración de Subdominios</option>
+          <option value="whois_lookup">Consulta de WHOIS</option>
+          <option value="technology_fingerprint">Detección de Tecnologías</option>
+	  <option value="full_host_info">Ficha completa de host</option>
+	  <option value="ipinfo_lookup">Ficha simplificada (IPinfo)</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Iniciar Análisis</button>
+    </form>
+
+    <div id="results" class="mt-5" style="display:none;">
+      <h2>Resultados del Análisis</h2>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Servicio</th>
+            <th>Descripción</th>
+            <th>Detalles</th>
+          </tr>
+        </thead>
+        <tbody id="results-output">
+          <!-- aquí van las filas -->
+        </tbody>
+      </table>
+
+      <h3>Informe Completo</h3>
+      <pre id="full-report" style="background:#f5f5f5; padding:1em; overflow:auto; max-height:400px;"></pre>
+
+      <button id="download-report" class="btn btn-secondary mt-3">Descargar Informe</button>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="scripts.js"></script>
+</body>
+</html>
+

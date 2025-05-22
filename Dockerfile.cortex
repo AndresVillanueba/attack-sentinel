@@ -1,0 +1,39 @@
+FROM thehiveproject/cortex:3.1.8-1
+USER root
+
+# ── deps APT + Python ────────────────────────────────────────────
+RUN rm -f /etc/apt/sources.list.d/corretto.list || true && \
+    apt-get update && \
+    apt-get install -y python3-pip libmagic1 python3-magic && \
+    pip3 install --upgrade pip && \
+    pip3 install \
+      cortexutils \
+      vulners \
+      shodan \
+      filetype \
+      python-magic \
+      vt-py \
+      opensearch-py \
+      abuse-finder    
+      # puedes añadir otras libs aquí si algún analizador las pide
+    && \
+    rm -rf /var/lib/apt/lists/*
+
+# ── cache Vulners (permite write en contenedor sin root) ─────────
+RUN mkdir -p /tmp/vulners_cache && chmod 777 /tmp/vulners_cache
+
+# ── home de cortex (logs/tmp) ────────────────────────────────────
+RUN mkdir -p /home/cortex && chmod 777 /home/cortex && \
+    ln -sfn /tmp/vulners_cache /home/cortex
+
+# ── Copiar tus analizadores extra ────────────────────────────────
+# 1) MITRE Correlation (ya lo tenías)
+COPY Cortex-Analyzers/analyzers/MITRE_Correlation \
+     /opt/Cortex-Analyzers/analyzers/MITRE_Correlation
+# 2) Abuse_Finder (cópialo si aún no está en la imagen base)
+COPY Cortex-Analyzers/analyzers/Abuse_Finder \
+     /opt/Cortex-Analyzers/analyzers/Abuse_Finder         
+RUN chown -R cortex:cortex /opt/Cortex-Analyzers/analyzers
+
+USER cortex
+
