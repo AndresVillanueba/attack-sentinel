@@ -2,7 +2,7 @@
 import json
 from opensearchpy import OpenSearch, helpers
 
-# URL de tu Opensearch (tal cual en docker-compose)
+# URL de Opensearch
 OPENSEARCH_URL = "http://opensearch:9200"
 
 # Cliente

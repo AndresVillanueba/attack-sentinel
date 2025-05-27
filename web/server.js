@@ -1,127 +1,190 @@
-/* server.js – Plataforma de Análisis de Superficie de Ataque */
 const express = require('express');
 const path    = require('path');
 const axios   = require('axios');
+const { Client } = require('@opensearch-project/opensearch');
 require('dotenv').config();
 
 const app        = express();
 const PORT       = process.env.PORT || 8080;
-const CORTEX_URL = process.env.CORTEX_URL || 'http://cortex:9001';
+const CORTEX_URL = process.env.CORTEX_URL || 'http://localhost:9001';
 const API_KEY    = process.env.CORTEX_API_KEY;
+const OPENSEARCH_HOST = 'http://localhost:9200';
+const INDEX_NAME = 'analisis';
 
-if (!API_KEY) {
-  console.warn('⚠️  CORTEX_API_KEY no está definido; la web no podrá llamar a Cortex');
+/* Configuración Ollama  */
+const OLLAMA_PORT  = process.env.OLLAMA_PORT  || 11434;   // puerto por defecto: 11434
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3'; 
+
+/* Cliente OpenSearch */
+const searchClient = new Client({ node: OPENSEARCH_HOST });
+
+async function checkIndex () {
+  try {
+    const { body: exists } = await searchClient.indices.exists({ index: INDEX_NAME });
+    if (!exists) {
+      console.log('No se ha encontrado el índice, creando...');
+      const { body: response } = await searchClient.indices.create({
+        index: INDEX_NAME,
+        body: {
+          settings: {
+            number_of_replicas: 1,
+            number_of_shards:   1
+          }
+        }
+      });
+      return response;
+    }
+  } catch (error) {
+    console.log('Error obteniendo datos de OpenSearch', error);
+  }
 }
+
+if (!API_KEY) console.warn('CORTEX_API_KEY no está definido; la web no podrá llamar a Cortex');
 
 app.use(express.static(path.join(__dirname)));
 app.use(express.json());
 
-// Configuración de analizadores
+/*  Mapa de analizadores disponibles */
 const cfgMap = {
   attack_surface_scan: {
-    name:  'attack_surface_scan', type: 'other', build: t => t.trim()
+    name:  'SmapScan_1_0',
+    type:  'other',
+    build: t => t.trim()
   },
   cve_lookup: {
-    name:  'Vulners_CVE_1_0',      type: 'cve',   build: t => t.trim().toUpperCase()
+    name:  'Vulners_CVE_1_0',
+    type:  'cve',
+    build: t => t.trim().toUpperCase(),
+    validate: txt => /^CVE-\d{4}-\d{4,}$/i.test(txt)
   },
   subdomain_enum: {
-    name:  'Crt_sh_Transparency_Logs_1_0', type: 'domain', build: t => t.trim().toLowerCase()
+    name:  'Crt_sh_Transparency_Logs_1_0',
+    type:  'domain',
+    build: t => t.trim().toLowerCase()
   },
-  whois_lookup: {
-    name:  'ThreatMiner_1_0',      type: t => (/^\d+\.\d+\.\d+\.\d+$/.test(t) ? 'ip' : 'domain'), build: t => t.trim()
-  },
-  technology_fingerprint: {
-    name:  'VirusTotal_GetReport_3_1', type: 'url', build: t => /^https?:\/\//i.test(t) ? t.trim() : `http://${t.trim()}`
-  },
-  ipinfo_lookup: {
-    name:  'IPinfo_Details_1_0',  type: t => 'ip', build: t => t.trim()
-  }
 };
 
-// Helper para cabecera auth
-const cortexReq = () => ({ headers: { Authorization: `Bearer ${API_KEY}` } });
+/* Utilidades Cortex */
+const cortexHeaders = { Authorization: `Bearer ${API_KEY}` };
 
-// Resuelve ID de worker por nombre
-async function resolveWorkerId(analyzerName) {
-  const { data: list } = await axios.get(`${CORTEX_URL}/api/analyzer`, cortexReq());
-  const it = list.find(a => a.name === analyzerName);
-  return it ? it.id : null;
+async function resolveWorkerId (analyzerName) {
+  const { data } = await axios.get(`${CORTEX_URL}/api/analyzer`, { headers: cortexHeaders });
+  const found = data.find(a => a.name === analyzerName);
+  return found?.id ?? null;
 }
 
-// Endpoint principal
+/* Generación de informe */
+/**
+ * Envía el report bruto a Ollama para obtener un informe ejecutivo ultracorto (150 palabras).
+ */
+async function generateOllamaReport (report) {
+  const url = `http://localhost:${OLLAMA_PORT}/api/generate`;
+  const prompt =
+    `Eres analista de ciberseguridad. Redacta un informe ejecutivo breve ` +
+    `para un cliente no técnico, destacando riesgos clave, impacto y siguientes pasos. Datos de base:\n\n` +
+    `${JSON.stringify(report, null, 2)}\n\nInforme resumido:`;
+
+  const payload = { model: OLLAMA_MODEL, prompt, stream: false };
+  try {
+    const response = await axios({ method: 'post', url, data: payload, responseType: 'json' });
+    return response.data.response || response.data;
+  } catch (err) {
+    console.error('Error llamando a Ollama', err.message);
+    return 'No se pudo generar el informe AI';
+  }
+}
+
+/*  endpoint /api/analyze */
+async function saveReport (doc) {
+  try {
+    const res = await searchClient.index({ index: INDEX_NAME, body: doc, refresh: 'true' });
+    return res;
+  } catch (error) {
+    console.log('Error añadiendo a OpenSearch');
+  }
+}
+
 app.post('/api/analyze', async (req, res) => {
+  await checkIndex();
+
   const { target, analysisType } = req.body;
   const cfg = cfgMap[analysisType];
   if (!cfg) return res.status(400).json({ error: 'Tipo de análisis no soportado' });
+  if (cfg.validate && !cfg.validate(target))
+    return res.status(400).json({ error: 'Formato incorrecto para este análisis' });
 
   try {
-    // 1️⃣ Lanza job
+    /* Ejecutamos el analizador en Cortex */
     const dataType = typeof cfg.type === 'function' ? cfg.type(target) : cfg.type;
     const data     = cfg.build(target);
     const workerId = await resolveWorkerId(cfg.name);
-    if (!workerId) return res.status(500).json({ error: `El analizador ${cfg.name} no existe en Cortex` });
+    if (!workerId) throw new Error(`No existe el analizador ${cfg.name} en Cortex`);
 
     const { data: job } = await axios.post(
       `${CORTEX_URL}/api/analyzer/${workerId}/run`,
       { dataType, data },
-      cortexReq()
+      { headers: cortexHeaders }
     );
 
-    // 2️⃣ Polling hasta Success
-    let status = job.status;
-    let report = null;
-    while (['Waiting','InProgress'].includes(status)) {
-      await new Promise(r => setTimeout(r, 1500));
-      const { data: info } = await axios.get(`${CORTEX_URL}/api/job/${job.id}`, cortexReq());
+    /*Polling hasta que el job finalice */
+    let status = job.status, report = null, tries = 0;
+    while (['Waiting', 'InProgress'].includes(status) && tries < 30) {
+      await new Promise(r => setTimeout(r, 2000));
+      const { data: info } = await axios.get(`${CORTEX_URL}/api/job/${job.id}`, { headers: cortexHeaders });
       status = info.status;
       report = info.report || report;
+      tries++;
     }
-    if (status !== 'Success') return res.status(500).json({ error: `El job terminó en estado ${status}` });
+    if (status !== 'Success')
+      return res.status(502).json({ error: `El job terminó en estado ${status}` });
 
-    // 3️⃣ Obtener full si hace falta
+    /*Si el report aún no está completo, lo solicitamos */
     if (!report) {
-      const { data: rep } = await axios.get(
-        `${CORTEX_URL}/api/job/${job.id}/report`, cortexReq()
-      );
-      report = rep;
+      const { data: rep } = await axios.get(`${CORTEX_URL}/api/job/${job.id}/report`, { headers: cortexHeaders });
+      report = rep.report;
     }
 
-    // 4️⃣ Construir rows según tipo de análisis
+    /*Generamos informe ultrarresumido con Ollama */
+    const aiReport = await generateOllamaReport(report);
+    console.log('Informe AI generado:', aiReport);
+
+    /*Guardamos en OpenSearch */
+    const doc = {
+      timestamp: new Date().toISOString(),
+      target,
+      analyzer: analysisType,
+      result: report,
+      aiReport: aiReport
+    };
+    await saveReport(doc);
+
+    /*Resumen tabular para la UI */
     let rows = [];
     if (cfg.name === 'Crt_sh_Transparency_Logs_1_0') {
-      const certList = report.full.certobj?.result || report.certobj?.result || [];
-      const subs = certList.flatMap(r => (r.name_value||'').split(/\s+/).filter(Boolean));
-      rows = [...new Set(subs)].sort().map(name => ({ service: 'Subdomain', description: name, details: 'Detectado por crt.sh' }));
-
-    } else if (report.summary?.taxonomies?.length) {
+      const certList = report.full?.certobj?.result || report.certobj?.result || [];
+      const subs = [...new Set(certList.flatMap(r => (r.name_value || '').split(/\s+/)).filter(Boolean))];
+      rows = subs.map(name => ({ service: 'Subdomain', description: name, details: 'Detectado por crt.sh' }));
+    } else if (Array.isArray(report.summary?.taxonomies)) {
       rows = report.summary.taxonomies.map(t => ({ service: t.predicate, description: t.namespace, details: t.value }));
-
-    } else if (cfg.name === 'IPinfo_Details_1_0') {
-      // IPinfo devuelve summary.taxonomies con country, city, org, etc.
-      rows = report.summary.taxonomies.map(t => ({ service: t.predicate, description: t.namespace, details: t.value }));
-
     } else if (Array.isArray(report.full?.exploits)) {
-      rows = report.full.exploits.map(e => ({ service: 'Exploit', description: e.title, details: e.published || '' }));
+      rows = report.full.exploits.map(e => ({ service: 'Exploit', description: e.title, details: e.published ?? '' }));
     }
-
     if (!rows.length) rows = [{ service: '-', description: 'Sin resumen disponible', details: 'Revisa el informe completo en Cortex' }];
 
-    // 5️⃣ Responder
-    res.json({ results: rows, analyzer: cfg.name, full: report });
-  }
-  catch (err) {
-    console.error('❌ Error en /api/analyze:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Error comunicándose con Cortex' });
+    return res.json({ analyzer: cfg.name, results: rows, full: report, aiReport: aiReport });
+  } catch (err) {
+    const detail = err.response?.data?.message || err.message || 'Error desconocido';
+    console.error('/api/analyze:', detail);
+    res.status(500).json({ error: 'Error comunicándose con Cortex', detail });
   }
 });
 
-// Demo descarga PDF
+/* descarga PDF  */
 app.post('/api/download-report', (_, res) => {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename="informe.pdf"');
   res.send('Simulated PDF report content');
 });
 
-// Arranque
+/*  start server */
 app.listen(PORT, () => console.log(`Web escuchando en http://localhost:${PORT}`));
-

@@ -1,69 +1,70 @@
-/* ------- scripts.js ▸ lógica del front ------- */
+/* scripts.js – cliente jQuery revisado */
 $(function () {
-  const $form    = $('#analysis-form');
-  const $results = $('#results');
-  const $tbody   = $('#results-output');
-  const $full    = $('#full-report');
-  const $dl      = $('#download-report');
+  //   Para proxy inverso o distinto dominio: const API_BASE = 'https://midominio.com';
+  const API_BASE = '';
 
-  /* ───────── submit ───────── */
-  $form.on('submit', function (e) {
+  // Cachés de elementos
+  const $form   = $('#analysis-form');
+  const $table  = $('#results-table');
+  const $tbody  = $('#results-output');
+  const $full   = $('#full-report');
+  const $wrap   = $('#results');
+  const $btnPDF = $('#download-report');
+
+  /*  Lanzar análisis  */
+  $form.submit(async function (e) {
     e.preventDefault();
 
-    const target = $('#target').val().trim();
-    const type   = $('#analysis-type').val();
-    if (!target) return alert('Debes indicar IP o dominio');
+    const target       = $('#target').val().trim();
+    const analysisType = $('#analysis-type').val();
 
-    /* reset UI */
+    // Reset UI
+    $wrap.hide();
     $tbody.empty();
-    $full.text('');
-    $results.hide();
+    $full.empty();
+    $btnPDF.hide();
 
-    $.ajax({
-      url: '/api/analyze',
-      method: 'POST',
-      contentType: 'application/json',
-      data: JSON.stringify({ target, analysisType: type })
-    })
-    .done(function (data) {
-      /* ----------- resumen ------------- */
-      if (Array.isArray(data.results) && data.results.length) {
-        data.results.forEach(r => {
-          $('<tr>')
-            .append($('<td>').text(r.service))
-            .append($('<td>').text(r.description))
-            .append($('<td>').text(r.details))
-            .appendTo($tbody);
-        });
-      } else {
-        $('<tr>')
-          .append($('<td>').text('-'))
-          .append($('<td>').text('Sin resumen disponible'))
-          .append($('<td>').text('Revisa el informe completo en Cortex'))
-          .appendTo($tbody);
-      }
+    try {
+      /*Llamada al backend */
+      const resp = await $.ajax({
+        url:  `${API_BASE}/api/analyze`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ target, analysisType })
+      });
 
-      /* ----------- informe completo ------------- */
-      $full.text(JSON.stringify(data.full, null, 2));
-      $results.show();
-    })
-    .fail(xhr => {
-      console.error(xhr.responseText);
-      alert('Error al comunicar con Cortex');
-    });
+      /* Pintar tabla*/
+      resp.results.forEach(r => {
+        $tbody.append(`
+          <tr>
+            <td>${r.service}</td>
+            <td>${r.description}</td>
+            <td>${r.details}</td>
+          </tr>
+        `);
+      });
+
+      // Compacta si hay muchas filas
+      $table.toggleClass('table-sm', resp.results.length > 5);
+
+      /*Informe completo */
+      $full.text(resp.aiReport || 'No se generó informe AI');
+
+      /* Mostrar resultados */
+      $wrap.fadeIn();
+      $btnPDF.show();
+
+    } catch (xhr) {
+      // xhr puede ser jqXHR o error
+      const msg = xhr.responseJSON?.error || xhr.statusText || xhr.message || 'Error desconocido';
+      alert(`Error al ejecutar el análisis:\n${msg}`);
+      console.error('POST /api/analyze →', xhr);
+    }
   });
 
-  /* ───────── descarga “PDF” de demo ───────── */
-  $dl.on('click', function () {
-    fetch('/api/download-report', { method: 'POST' })
-      .then(res => res.blob())
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        $('<a>')
-          .attr({ href: url, download: 'informe.pdf' })
-          .appendTo('body')[0].click();
-        URL.revokeObjectURL(url);
-      });
+  /*  Descargar PDF demo */
+  $btnPDF.click(() => {
+    window.location = `${API_BASE}/api/download-report`;
   });
 });
 

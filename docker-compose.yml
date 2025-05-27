@@ -11,7 +11,7 @@ services:
     ports:
       - "9200:9200"
       - "9600:9600"
-    networks: [my_net]
+    networks: [proyecto_my_net]
 
   mitre-ingest:
     image: python:3.9-slim
@@ -19,12 +19,12 @@ services:
     depends_on: [opensearch]
     volumes:
       - ./mitre/enterprise-attack.json:/data/enterprise-attack.json:ro
-      - ./ingest_mitre.py:/ingest_mitre.py:ro
-    entrypoint: ["sh","-c"]
+      - ./mitre/ingest_mitre.py:/ingest_mitre.py:ro
+    entrypoint: ["sh", "-c"]
     command: |
       pip install --no-cache-dir opensearch-py && \
-      python /ingest_mitre.py
-    networks: [my_net]
+      python3 /ingest_mitre.py /data/enterprise-attack.json
+    networks: [proyecto_my_net]
 
   cortex:
     build:
@@ -33,24 +33,24 @@ services:
     depends_on: [opensearch]
     environment:
       - JOB_DIRECTORY=/tmp/cortex-jobs
-    command: ["--es-uri","http://opensearch:9200"]
+    command: ["--es-uri", "http://opensearch:9200"]
     volumes:
-      - ./cortex/application.conf:/etc/cortex/application.conf:ro
-      - ./cortex/logback.xml:/etc/cortex/logback.xml:ro
-      - /home/vboxuser/Cortex-Analyzers/analyzers:/opt/Cortex-Analyzers/analyzers:ro
+      - ./cortex/application.conf:/etc/cortex/application.conf
+      - ./cortex/logback.xml:/etc/cortex/logback.xml
+      - ./Cortex-Analyzers/analyzers:/opt/Cortex-Analyzers/analyzers
     ports:
       - "9001:9001"
-    networks: [my_net]
+    networks: [proyecto_my_net]
 
   thehive:
     image: thehiveproject/thehive:latest
     depends_on: [opensearch, cortex]
-    command: ["--es-uri","http://opensearch:9200","--auto-migration"]
+    command: ["--es-uri", "http://opensearch:9200", "--auto-migration"]
     volumes:
       - ./thehive-config:/etc/thehive:ro
     ports:
       - "9000:9000"
-    networks: [my_net]
+    networks: [proyecto_my_net]
 
   dashboards:
     image: opensearchproject/opensearch-dashboards:1.3.9
@@ -64,21 +64,8 @@ services:
       OPENSEARCH_SECURITY_READONLY_MODE_ROLES: "[]"
     ports:
       - "5601:5601"
-    networks: [my_net]
-
-  web:
-    build:
-      context: ./web           #  ← carpeta donde está Dockerfile
-    env_file:
-      - ./web/.env             #  ← variables: PORT, CORTEX_URL, CORTEX_API_KEY
-    depends_on:
-      - cortex
-      - opensearch
-    ports:
-      - "8080:8080"            #  host:contenedor
-    networks:
-      - my_net                 #  misma red que el resto
+    networks: [proyecto_my_net]
 
 networks:
-  my_net:
+  proyecto_my_net:
     driver: bridge
