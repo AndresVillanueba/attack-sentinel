@@ -62,7 +62,7 @@ COPY Cortex-Analyzers/analyzers/SmapScan \
 RUN chmod -R +x /opt/Cortex-Analyzers/analyzers/SmapScan && \
     chown -R cortex:cortex /opt/Cortex-Analyzers/analyzers
 
-# Install dos2unix y convertir la linea de endings en Python scripts
+# Instalacion de dos2unix y convertir la linea de endings en Python scripts
 RUN apt-get update && \
     apt-get install -y dos2unix && \
     find /opt/Cortex-Analyzers/analyzers -type f -name "*.py" -exec dos2unix {} \; && \
