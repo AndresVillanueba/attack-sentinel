@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ATTACK-SENTINEL</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body>
+  <!-- Barra superior -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top" style="z-index:1000;">
+    <a class="navbar-brand d-flex align-items-center" href="#" style="font-weight:700; font-size:1.3em;">
+      <span>ATTACK-SENTINEL</span>
+      <span id="account-type" style="margin-left:18px; font-size:0.95em; color:#fff; background:#007bff; border-radius:6px; font-weight:600; padding:2px 10px; display:none;">user</span>
+      <span id="user-display" style="margin-left:8px; font-size:0.95em; color:#ffc107; font-weight:500; display:none; cursor:pointer; position:relative;"></span>
+    </a>
+    <!-- El dropdown debe ir fuera del <a> -->
+    <div id="user-dropdown" class="dropdown-menu" style="min-width:220px; display:none; position:absolute; top:32px; left:0; z-index:2000;">
+      <a class="dropdown-item admin-only" href="#" id="admin-panel-link" style="display:none;"><i class="fa-solid fa-user-shield mr-2"></i>Panel de administración</a>
+    </div>
+    <div class="ml-auto d-flex align-items-center justify-content-end" style="width: 260px;">
+      <button id="logout-btn" class="btn btn-outline-danger d-none" style="font-size:1.1em; display:flex; align-items:center; gap:8px;">
+        <span style="font-weight:600;">Cerrar sesión</span>
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
+    </div>
+  </nav>
+  <div class="container d-flex flex-column justify-content-center align-items-center" style="min-height: 80vh;">
+    <!-- Login -->
+    <div id="login-section" class="d-flex justify-content-center align-items-center w-100" style="min-height: 60vh;">
+      <div class="card shadow-lg p-4" style="max-width: 400px; width: 100%; border-radius: 22px;">
+        <div class="text-center mb-3">
+          <img src="logo-ats.jpg" alt="login-icon" style="width:70px; opacity:0.9;">
+          <h2 class="mt-2 mb-3" style="font-weight:700; color:#343a40; letter-spacing:0.5px;">Iniciar Sesión</h2>
+          <button id="help-btn-login" type="button" class="btn btn-outline-info btn-sm mt-2" title="Ayuda para crear usuario" style="font-size:1.1em; min-width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;">
+            <i class="fa-solid fa-circle-question"></i> Ayuda
+          </button>
+        </div>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="username">Usuario</label>
+            <input type="text" class="form-control" id="username" required autocomplete="username" minlength="3" pattern="^[^\s]{3,}$" title="Mínimo 3 caracteres, sin espacios">
+          </div>
+          <div class="form-group">
+            <label for="password">Contraseña</label>
+            <input type="password" class="form-control" id="password" required autocomplete="current-password" minlength="3" pattern="^[^\s]{3,}$" title="Mínimo 3 caracteres, sin espacios">
+          </div>
+          <div id="login-error" class="alert alert-danger py-2 px-3 mt-2 mb-0" style="display:none;font-size:0.95em;"></div>
+          <button type="submit" class="btn btn-primary btn-block mt-3" style="font-weight:600;">Entrar</button>
+          <div class="text-center mt-3">
+            <a href="#" id="show-register" style="color:#007bff; font-size:0.98em;">¿No tienes cuenta? Regístrate</a>
+          </div>
+          <div class="text-center mt-2">
+            <a href="#" id="show-password-recovery" style="color:#28a745; font-size:0.9em;">¿Olvidaste tu contraseña?</a>
+          </div>
+        </form>
+        <form id="register-form" style="display:none;">
+          <div class="form-group">
+            <label for="reg-username">Usuario</label>
+            <input type="text" class="form-control" id="reg-username" required autocomplete="username" minlength="3" pattern="^[^\s]{3,}$" title="Mínimo 3 caracteres, sin espacios">
+          </div>
+          <div class="form-group">
+            <label for="reg-password">Contraseña</label>
+            <input type="password" class="form-control" id="reg-password" required autocomplete="new-password" minlength="3" pattern="^[^\s]{3,}$" title="Mínimo 3 caracteres, sin espacios">
+          </div>
+          <div id="register-error" class="alert alert-danger py-2 px-3 mt-2 mb-0" style="display:none;font-size:0.95em;"></div>
+          <div id="register-success" class="alert alert-success py-2 px-3 mt-2 mb-0" style="display:none;font-size:0.95em;"></div>
+          <button type="submit" class="btn btn-success btn-block mt-3" style="font-weight:600;">Crear cuenta</button>
+          <div class="text-center mt-3">
+            <a href="#" id="show-login" style="color:#007bff; font-size:0.98em;">¿Ya tienes cuenta? Inicia sesión</a>
+          </div>
+        </form>
+        
+        <!-- Formulario de recuperación de contraseña -->
+        <form id="recovery-form" style="display:none;">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 style="font-weight:600; margin:0;">Recuperar contraseña</h5>
+            <button id="recovery-info-btn" type="button" class="btn btn-outline-info btn-sm" title="Información importante" style="font-size:1em; min-width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;">
+              <i class="fa-solid fa-circle-info"></i>
+            </button>
+          </div>
+          <div class="form-group">
+            <label for="recovery-username">Usuario</label>
+            <input type="text" class="form-control" id="recovery-username" required autocomplete="username" minlength="3" pattern="^[^\s]{3,}$" title="Mínimo 3 caracteres, sin espacios">
+          </div>
+          <div id="recovery-error" class="alert alert-danger py-2 px-3 mt-2 mb-0" style="display:none;font-size:0.95em;"></div>
+          <div id="recovery-success" class="alert alert-success py-2 px-3 mt-2 mb-0" style="display:none;font-size:0.95em;"></div>
+          <button type="submit" class="btn btn-success btn-block mt-3" style="font-weight:600;">Recuperar contraseña</button>
+          <div class="text-center mt-3">
+            <a href="#" id="show-login-from-recovery" style="color:#007bff; font-size:0.98em;">Volver al inicio de sesión</a>
+          </div>
+        </form>
+        
+        <button id="google-login-btn" type="button" style="background:#fff;color:#444;border:1px solid #ccc;padding:8px 16px;border-radius:4px;display:flex;align-items:center;gap:8px;cursor:pointer;width:100%;font-weight:600;margin-top:12px;">
+          <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style="width:20px;height:20px;"> Iniciar sesión con Google
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenido principal oculto hasta login -->
+    <div id="main-content" class="w-100 d-flex flex-column align-items-center justify-content-center" style="display:none !important; min-height: 60vh;">
+      <!-- Barra de carga -->
+      <div id="loading-bar" class="progress" style="display:none; height: 32px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+          style="width: 0%; font-size:1.1em;" id="loading-bar-inner">Cargando análisis...</div>
+      </div>
+
+      <form id="analysis-form" class="mt-4">
+        <div class="d-flex align-items-center justify-content-center gap-2 mb-3" style="gap: 16px;">
+          <button id="help-btn-form-top" type="button" class="btn btn-outline-info" title="Ayuda" style="font-size:1.15em; min-width:44px; height:44px; display:flex; align-items:center; justify-content:center;">
+            <i class="fa-solid fa-circle-question"></i>
+          </button>
+          <span style="font-weight:600; color:#007bff; font-size:1.13em;">Análisis de Dominio/IP</span>
+        </div>
+        <div class="form-group">
+          <label for="target">IP o Dominio</label>
+          <input type="text" class="form-control" id="target" placeholder="Ingrese la IP o dominio" required pattern="^((([a-zA-Z0-9\-]+\.)+[a-zA-Z]{2,})|(\d{1,3}(\.\d{1,3}){3}))$" title="Introduce una IP válida (ej: 192.168.1.1) o un dominio válido (ej: ejemplo.com)">
+        </div>
+        <div class="form-group">
+          <label for="analysis-type">Tipo de Análisis</label>
+          <select class="form-control" id="analysis-type" required>
+            <option value="attack_surface_scan">Escaneo de Superficie de Ataque</option>
+            <option value="cve_lookup">Detección de Vulnerabilidades (CVEs)</option>
+            <option value="subdomain_enum">Enumeración de Subdominios</option>
+          </select>
+        </div>
+        <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+          <button type="submit" class="btn btn-primary" id="start-analysis-btn" style="min-width:140px; height:44px; font-size:1.08em;">Iniciar Análisis</button>
+        </div>
+      </form>
+
+      <div id="results" class="mt-5" style="display:none;">
+        <h2 class="mb-4" style="font-weight:700; color:#2d3a4a;">Resultados del Análisis</h2>
+        <table class="table table-striped" id="results-table">
+          <thead class="thead-dark">
+            <tr>
+              <th>Servicio</th>
+              <th>Descripción</th>
+            </tr>
+          </thead>
+          <tbody id="results-output">
+          </tbody>
+        </table>
+
+        <h3 class="mt-4" style="font-weight:600; color:#007bff;">Informe Completo</h3>
+        <pre id="full-report" style="background:#f5f5f5; padding:2em 2.5em; overflow:auto; max-height:600px; border-radius:12px; font-size:1.13em; line-height:1.7; margin:0 auto 24px auto; width:100%; max-width:1100px; box-shadow:0 4px 24px 0 rgba(31,38,135,0.13); white-space:pre-wrap; word-break:break-word;"></pre>
+
+        <button id="download-report" class="btn btn-secondary mt-2">Descargar Informe PDF</button>
+      </div>
+
+      <div class="d-flex align-items-center justify-content-center mb-3" style="gap: 12px;">
+        <button id="show-history" class="btn btn-info">Ver Historial</button>
+        <button id="show-mitre-info" class="btn btn-warning ml-2">Ver info MITRE</button>
+        <button id="close-history" class="btn btn-danger ml-2" style="display:none;">Cerrar historial</button>
+      </div>
+      <div id="mitre-info-section" style="display:none; width:100%; max-width:900px; margin:0 auto 24px auto;">
+        <h3 class="mb-3" style="font-weight:600; color:#b36b00;">Información sobre MITRE ATT&CK</h3>
+        <div class="table-responsive">
+          <table class="table table-bordered table-striped" id="mitre-info-table">
+            <thead class="thead-dark">
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Enlace</th>
+              </tr>
+            </thead>
+            <tbody id="mitre-info-output"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="history-section" style="display:none;">
+        <h3 class="mb-3" style="font-weight:600; color:#2d3a4a;">Historial de Análisis</h3>
+        <form id="history-filter-form" class="form-inline mb-3">
+          <label for="history-from" class="mr-2">Desde:</label>
+          <input type="date" id="history-from" class="form-control mr-3" style="max-width:160px;">
+          <label for="history-to" class="mr-2">Hasta:</label>
+          <input type="date" id="history-to" class="form-control mr-3" style="max-width:160px;">
+          <button type="submit" class="btn btn-primary">Filtrar</button>
+          <button type="button" id="clear-history-filter" class="btn btn-link ml-2">Limpiar</button>
+        </form>
+        <!-- Tabla de historial sin columna de resumen -->
+        <div class="history-table-wrapper">
+          <table class="table table-bordered">
+            <thead class="thead-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Target</th>
+                <th>Tipo</th>
+              </tr>
+            </thead>
+            <tbody id="history-output"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de ayuda -->
+    <div class="modal fade" id="help-modal" tabindex="-1" role="dialog" aria-labelledby="helpModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="helpModalLabel">¿Qué es ATTACK-SENTINEL?</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p><b>ATTACK-SENTINEL</b> te permite analizar la seguridad de una IP o dominio usando técnicas profesionales de ciberseguridad. <b>La plataforma está principalmente enfocada al análisis de dominios o de direcciones IP asociadas a dominios</b>, por lo que obtendrás mejores resultados si introduces dominios o IPs públicas de servicios web.</p>
+            <ul>
+              <li>Escanear la superficie de ataque de un sistema o web.</li>
+              <li>Buscar vulnerabilidades conocidas (CVEs).</li>
+              <li>Enumerar subdominios públicos.</li>
+              <li>Generar informes ejecutivos automáticos con IA.</li>
+              <li>Consultar y descargar el historial de tus análisis.</li>
+            </ul>
+            <p>Ideal para estudiantes, analistas y cualquier persona que quiera aprender sobre ciberseguridad ofensiva de forma sencilla y visual.</p>
+            <hr>
+            <b>¿Cómo funciona?</b>
+            <ul>
+              <li>Regístrate o inicia sesión.</li>
+              <li>Elige el tipo de análisis y el objetivo.</li>
+              <li>Revisa los resultados y descarga el informe.</li>
+              <li>Consulta tu historial y filtra por fecha.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para PDFs descargados -->
+    <div class="modal fade" id="pdfs-modal" tabindex="-1" role="dialog" aria-labelledby="pdfsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="pdfsModalLabel">PDFs descargados</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body" id="pdfs-list">
+            <div class="text-center text-muted">Cargando PDFs...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de información para recuperación de contraseña -->
+    <div class="modal fade" id="recovery-info-modal" tabindex="-1" role="dialog" aria-labelledby="recoveryInfoModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="recoveryInfoModalLabel">Información sobre recuperación de contraseña</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info mb-3">
+              <strong>Información:</strong> El sistema de recuperación de contraseña está completamente implementado con envío real de correos electrónicos.
+            </div>
+            <p>Cuando solicites recuperar tu contraseña, el sistema realizará los siguientes pasos:</p>
+            <ol>
+              <li>Generará un token único de restablecimiento con tiempo de expiración (1 hora)</li>
+              <li>Almacenará este token en la base de datos asociado a tu usuario</li>
+              <li>Enviará un correo electrónico a tu dirección con un enlace para restablecer la contraseña</li>
+              <li>Cuando accedas al enlace, podrás establecer una nueva contraseña de forma segura</li>
+            </ol>
+            <div class="alert alert-warning mt-3">
+              <strong>Nota:</strong> Para que funcione correctamente, asegúrate de usar un correo electrónico real como nombre de usuario, o actualiza el código para enviar el correo a una dirección asociada con tu cuenta.
+            </div>
+            <div class="alert alert-primary mt-3">
+              <strong>Configuración:</strong> Las credenciales de correo electrónico se pueden configurar mediante variables de entorno:
+              <ul class="mt-2 mb-0">
+                <li><code>EMAIL_USER</code>: Correo del remitente</li>
+                <li><code>EMAIL_PASS</code>: Contraseña o clave de aplicación</li>
+                <li><code>EMAIL_HOST</code>: Servidor SMTP (ej: smtp.gmail.com)</li>
+                <li><code>EMAIL_PORT</code>: Puerto SMTP (ej: 587 o 465)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de ayuda para login/registro -->
+    <div class="modal fade" id="help-modal-login" tabindex="-1" role="dialog" aria-labelledby="helpModalLoginLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="helpModalLoginLabel">¿Cómo crear un usuario?</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <ul>
+              <li>Elige un nombre de usuario de al menos 3 caracteres, sin espacios.</li>
+              <li>La contraseña debe tener al menos 3 caracteres y no contener espacios.</li>
+              <li>Usa una contraseña segura: combina letras, números y símbolos si es posible.</li>
+              <li>Recuerda tus credenciales, las necesitarás para acceder a la plataforma.</li>
+            </ul>
+            <hr>
+            <b>¿Problemas para registrarte?</b>
+            <ul>
+              <li>Si el usuario ya existe, elige otro nombre.</li>
+              <li>Si tienes dudas, contacta con el administrador.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+  <script src="scripts.js"></script>
+  <script>
+    document.getElementById('google-login-btn').onclick = function(e) {
+      e.preventDefault();
+      window.location.href = '/auth/google';
+    };
+  </script>
+  <script>
+    // Asegura que el panel admin SIEMPRE esté oculto al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('admin-panel').style.display = 'none';
+      // Si por error se muestra, lo ocultamos
+      if (document.getElementById('main-content')) document.getElementById('main-content').style.display = '';
+      // Oculta el rol al inicio
+      if (document.getElementById('user-role')) document.getElementById('user-role').style.display = 'none';
+    });
+  </script>
+  <!-- Footer -->
+  <footer class="bg-dark text-light mt-4">
+    <div class="container-fluid">
+      <div class="d-flex justify-content-center align-items-center py-2 gap-4">
+        <a href="https://www.linkedin.com/in/andr%C3%A9s-juli%C3%A1n-romero-villanueva-241281282/" target="_blank" class="text-white d-flex align-items-center" style="font-size:1.05em;">
+          <i class="fab fa-linkedin" style="font-size:1.4em;"></i><span class="ml-2">LinkedIn</span>
+        </a>
+        <span class="text-light">|</span>
+        <a href="https://www.incibe.es/incibe-cert/blog/osint-la-informacion-es-poder" target="_blank" class="text-white d-flex align-items-center" style="font-size:1.05em;">
+          <i class="fas fa-shield-alt" style="font-size:1.4em;"></i><span class="ml-2">INCIBE-CERT</span>
+        </a>
+        <span class="text-light">|</span>
+        <a href="https://www.sans.org/blog/what-is-open-source-intelligence/" target="_blank" class="text-white d-flex align-items-center" style="font-size:1.05em;">
+          <i class="fas fa-graduation-cap" style="font-size:1.4em;"></i><span class="ml-2">SANS OSINT</span>
+        </a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,23 @@
+[
+  {
+    "username": "user",
+    "password": "$2b$10$hashedsecurepassword123456789012345678901234",
+    "role": "user",
+    "email": "user@example.com",
+    "updatedAt": 1749341984037
+  },
+  {
+    "username": "user2",
+    "password": "$2b$10$hashedsecurepassword123456789012345678901234",
+    "role": "user",
+    "email": "user2@example.com",
+    "updatedAt": 1749341984037
+  },
+  {
+    "username": "admin",
+    "password": "$2b$10$hashedsecurepassword123456789012345678901234",
+    "role": "admin",
+    "email": "admin@example.com",
+    "updatedAt": 1749341984037
+  }
+]
